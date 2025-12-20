@@ -1,0 +1,37 @@
+{
+  "name": "nexta-whatsapp-bot",
+  "version": "2.1.0",
+  "description": "Advanced WhatsApp Bot dengan integrasi Firebase Admin SDK",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "pm2:start": "pm2 start index.js --name nexta-bot",
+    "pm2:restart": "pm2 restart nexta-bot",
+    "pm2:stop": "pm2 stop nexta-bot",
+    "pm2:logs": "pm2 logs nexta-bot"
+  },
+  "keywords": [
+    "whatsapp-bot",
+    "automation",
+    "sticker",
+    "ai",
+    "firebase",
+    "modular"
+  ],
+  "author": "Puru",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.5",
+    "axios": "^1.6.0",
+    "firebase-admin": "^12.0.0",
+    "chalk": "^4.1.2",
+    "form-data": "^4.0.0",
+    "pino": "^9.2.0",
+    "wa-sticker-formatter": "^4.4.4"
+  }
+}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Fast Update</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f4f9; color: #333; margin: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1, h2, h3 { color: #444; }
+        .step { margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        a, button { display: inline-block; padding: 10px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; font-size: 16px; }
+        a:hover, button:hover { background-color: #0056b3; }
+        textarea { width: 98%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; min-height: 120px; font-family: monospace; font-size: 14px; line-height: 1.5; }
+        .alert { padding: 15px; margin-top: 20px; border-radius: 5px; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        input[type="text"], input[type="password"] { width: 98%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bot Fast Update via AI</h1>
+        
+        <div class="step">
+            <h2>1. Download Source Code</h2>
+            <p>Download the current source code of the bot to provide context to the AI. This will be in a file named <code>konteks.txt</code>.</p>
+            <a href="/download" download="konteks.txt">Download Source Code</a>
+        </div>
+
+        <div class="step">
+            <h2>2. Generate Prompt for AI</h2>
+            <p>Describe the changes you want to make, then generate the full prompt to copy-paste into your AI chat.</p>
+            <textarea id="changeRequest" placeholder="e.g., Add a command '.ping' that replies with 'pong'"></textarea>
+            <br><br>
+            <button onclick="generatePrompt()">Generate Prompt</button>
+            <h3>Prompt to Copy:</h3>
+            <textarea id="generatedPrompt" readonly></textarea>
+        </div>
+
+        <div class="step">
+            <h2>3. Apply Update</h2>
+            <p>Paste the <strong>entire response</strong> from the AI below and click the button. The bot will automatically apply the changes and shut down to be restarted.</p>
+            <textarea id="aiResponse" placeholder="Paste the full AI response here..."></textarea>
+            <br><br>
+            <button onclick="applyUpdate()">Apply Update & Restart Bot</button>
+        </div>
+
+        <div class="step">
+            <h2>4. Backup to GitHub</h2>
+            <p>Upload all files (excluding dotfiles and node_modules) to a GitHub repository.</p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>GitHub Token (Classic)</label>
+                    <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label>Branch</label>
+                    <input type="text" id="ghBranch" placeholder="main" value="main">
+                </div>
+                <div class="form-group">
+                    <label>Owner (User/Org)</label>
+                    <input type="text" id="ghOwner" placeholder="e.g. MyUserName">
+                </div>
+                <div class="form-group">
+                    <label>Repository Name</label>
+                    <input type="text" id="ghRepo" placeholder="e.g. my-bot-repo">
+                </div>
+            </div>
+            <button onclick="backupToGithub()" style="background-color: #28a745;">Backup Now</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+    <script>
+        // Load GitHub config from local storage
+        window.onload = function() {
+            if(localStorage.getItem('gh_token')) document.getElementById('ghToken').value = localStorage.getItem('gh_token');
+            if(localStorage.getItem('gh_owner')) document.getElementById('ghOwner').value = localStorage.getItem('gh_owner');
+            if(localStorage.getItem('gh_repo')) document.getElementById('ghRepo').value = localStorage.getItem('gh_repo');
+            if(localStorage.getItem('gh_branch')) document.getElementById('ghBranch').value = localStorage.getItem('gh_branch');
+        }
+
+        function generatePrompt() {
+            const request = document.getElementById('changeRequest').value;
+            if (!request) {
+                alert('Please describe the change you want to make.');
+                return;
+            }
+            const template = `Based on the provided source code, I need you to make the following changes: "${request}"
+
+IMPORTANT: For every file you need to create or modify, you MUST provide the code in a single markdown block with special comments at the top. The format is MANDATORY.
+
+For writing/overwriting a file:
+\`\`\`js
+// @path path/to/your/file.js
+// @type write
+
+// your full code here...
+\`\`\`
+
+For deleting a file:
+\`\`\`js
+// @path path/to/your/file.js
+// @type delete
+
+// No code needed here, just the comments.
+\`\`\`
+
+Do not deviate from this format. Provide the complete code for each file you are modifying.`;
+            document.getElementById('generatedPrompt').value = template;
+        }
+
+        // Robust UTF-8 to Base64 encoder to prevent character corruption
+        function utf8ToBase64(str) {
+            return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+                function(match, p1) {
+                    return String.fromCharCode(parseInt(p1, 16));
+                }
+            ));
+        }
+
+        async function applyUpdate() {
+            const aiResponse = document.getElementById('aiResponse').value;
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '';
+
+            if (!aiResponse) {
+                alert('Please paste the AI response.');
+                return;
+            }
+
+            try {
+                const encodedResponse = utf8ToBase64(aiResponse);
+                const response = await fetch('/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: encodedResponse
+                });
+
+                const resultText = await response.text();
+
+                if (response.ok) {
+                    statusDiv.className = 'alert alert-success';
+                    statusDiv.textContent = resultText;
+                    document.querySelector('.container').innerHTML = '<h1>Update applied. Bot is restarting... Please wait a moment.</h1>';
+                } else {
+                    statusDiv.className = 'alert alert-error';
+                    statusDiv.textContent = `Error: ${resultText}`;
+                }
+            } catch (error) {
+                statusDiv.className = 'alert alert-error';
+                statusDiv.textContent = 'A network or server error occurred: ' + error.message;
+            }
+        }
+
+        async function backupToGithub() {
+            const token = document.getElementById('ghToken').value;
+            const owner = document.getElementById('ghOwner').value;
+            const repo = document.getElementById('ghRepo').value;
+            const branch = document.getElementById('ghBranch').value;
+            const statusDiv = document.getElementById('status');
+
+            if (!token || !owner || !repo || !branch) {
+                alert('Please fill in all GitHub fields.');
+                return;
+            }
+
+            // Save to Local Storage
+            localStorage.setItem('gh_token', token);
+            localStorage.setItem('gh_owner', owner);
+            localStorage.setItem('gh_repo', repo);
+            localStorage.setItem('gh_branch', branch);
+
+            statusDiv.innerHTML = '';
+            statusDiv.className = 'alert';
+            statusDiv.style.backgroundColor = '#e2e3e5';
+            statusDiv.style.color = '#383d41';
+            statusDiv.textContent = 'Uploading to GitHub... This might take a while depending on file size.';
+
+            try {
+                const response = await fetch('/github-backup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, owner, repo, branch })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    statusDiv.className = 'alert alert-success';
+                    statusDiv.textContent = result.message;
+                } else {
+                    statusDiv.className = 'alert alert-error';
+                    statusDiv.textContent = 'Backup Failed: ' + (result.message || 'Unknown error');
+                }
+            } catch (error) {
+                statusDiv.className = 'alert alert-error';
+                statusDiv.textContent = 'Network error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
